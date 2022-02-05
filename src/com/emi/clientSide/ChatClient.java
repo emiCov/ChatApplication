@@ -11,7 +11,9 @@ public class ChatClient {
     private Set<String> users = new HashSet<>();
 
     public void execute() {
-        try (Socket socket = new Socket(ADDRESS, PORT)) {
+        try {
+            Socket socket = new Socket(ADDRESS, PORT);
+            System.out.println("Client connected");
 
             WriteThread output = new WriteThread(socket, this);
             ReadThread input = new ReadThread(socket, this);
@@ -19,7 +21,7 @@ public class ChatClient {
             input.start();
 
         } catch (IOException e) {
-            System.out.println("ChatClient error " + e.getMessage());
+            System.out.println("ChatClient exception " + e.getMessage());
         }
 
     }

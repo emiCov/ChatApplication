@@ -7,23 +7,36 @@ import java.net.Socket;
 public class ReadThread extends Thread {
     private final Socket socket;
     private final ChatClient chatClient;
+    private BufferedReader reader;
 
     public ReadThread(Socket socket, ChatClient chatClient) {
         this.socket = socket;
         this.chatClient = chatClient;
+
+        try {
+            InputStream input = socket.getInputStream();
+            reader = new BufferedReader(new InputStreamReader(input));
+
+        } catch (IOException e) {
+            System.out.println("ReadThread exception " + e.getMessage());
+        }
     }
 
     @Override
     public void run() {
 
-        try (InputStream input = socket.getInputStream();
-             BufferedReader reader = new BufferedReader(
-                     new InputStreamReader(input))) {
+        while (true) {
+            try {
+                String serverMessage = reader.readLine();
+                if (serverMessage == null)
+                    break;
 
-            String serverMessage;
+                if (serverMessage.contains("Connected users:")) {
+                    String[] existingUsers = serverMessage.split("[\\[\\]]")[1].split("[ ,]+");
+                    for (String user : existingUsers)
+                        chatClient.addUser(user);
+                }
 
-            do {
-                serverMessage = reader.readLine();
                 if (serverMessage.contains("New user connected"))
                     chatClient.addUser(serverMessage.substring(20));
                 else if (serverMessage.contains("has quit"))
@@ -31,10 +44,11 @@ public class ReadThread extends Thread {
                 else
                     System.out.println(serverMessage);
 
-            } while (!serverMessage.equalsIgnoreCase("bye"));
+            } catch (IOException e) {
+                System.out.println("Error reading from the server " + e.getMessage());
+            }
 
-        } catch (IOException e) {
-            System.out.println("ReadThread exception " + e.getMessage());
         }
+
     }
 }

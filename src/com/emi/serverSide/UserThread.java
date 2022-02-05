@@ -7,6 +7,7 @@ public class UserThread extends Thread {
     private final Socket socket;
     private final ChatServer chatServer;
     PrintWriter writer;
+    BufferedReader reader;
 
     public UserThread(Socket socket, ChatServer chatServer) {
         this.socket = socket;
@@ -15,38 +16,62 @@ public class UserThread extends Thread {
 
     @Override
     public void run() {
-        try (InputStream input = socket.getInputStream();
-             BufferedReader reader = new BufferedReader(
-                     new InputStreamReader(input));
-             OutputStream output = socket.getOutputStream()) {
-
+        try {
+            InputStream input = socket.getInputStream();
+            reader = new BufferedReader(new InputStreamReader(input));
+            OutputStream output = socket.getOutputStream();
             writer = new PrintWriter(output, true);
 
+            // sends a list of connected users
             printUsers();
 
+            // adds this user to the Map
             String userName = reader.readLine();
-            chatServer.addUserName(userName);
+            chatServer.addUser(userName, this);
 
+            // sends everyone a message about who has connected
             String serverMessage = "New user connected: " + userName;
-            chatServer.broadcast(serverMessage, this);
+            chatServer.broadcastToEveryone(serverMessage, this);
 
             String clientMessage;
 
-            do {
+            while (true) {
                 clientMessage = reader.readLine();
-                serverMessage = "[" + userName + "]" + clientMessage;
-                chatServer.broadcast(serverMessage, this);
 
+                if (clientMessage.equalsIgnoreCase("bye"))
+                    break;
 
-            } while (!clientMessage.equalsIgnoreCase("bye"));
+                if (!clientMessage.contains("@"))
+                    continue;
+
+                // splits the received message into recipient and message
+                String messageReceiver = clientMessage.substring(1,clientMessage.indexOf(' '));
+                clientMessage = clientMessage.substring(clientMessage.indexOf(' ') + 1);
+                serverMessage = "\"" + userName + "\": " + clientMessage;
+
+                if (messageReceiver.equals("everyone"))
+                    chatServer.broadcastToEveryone(serverMessage, this);
+                else if (chatServer.getUserNames().contains(messageReceiver))
+                    chatServer.broadcastToUser(serverMessage, chatServer.getUserThread(messageReceiver));
+                else
+                    chatServer.broadcastToUser("The user you specified does not exist", this);
+            }
+
+            // removes the user after he said "bye" and closes the socket
+            chatServer.removeUser(userName, this);
+            socket.close();
+
+            // tells everyone who has quit
+            serverMessage = userName + " has quit";
+            chatServer.broadcastToEveryone(serverMessage, this);
 
         } catch (IOException e) {
-            System.out.println("UserThread error " + e.getMessage());
+            System.out.println("UserThread exception " + e.getMessage());
         }
     }
 
     void printUsers() {
-        if (chatServer.hasUsers())
+        if (!chatServer.hasUsers())
             writer.println("Connected users: " + chatServer.getUserNames());
         else
             writer.println("No other users connected");

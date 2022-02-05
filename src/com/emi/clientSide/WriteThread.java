@@ -12,42 +12,42 @@ public class WriteThread extends Thread {
     private Scanner scanner = new Scanner(System.in);
     private PrintWriter writer;
 
-    public WriteThread (Socket socket, ChatClient chatClient) {
+    public WriteThread(Socket socket, ChatClient chatClient) {
         this.socket = socket;
         this.chatClient = chatClient;
+
+        try {
+            OutputStream output = socket.getOutputStream();
+            writer = new PrintWriter(output, true);
+
+        } catch (IOException e) {
+            System.out.println("WriteThread exception " + e.getMessage());
+        }
     }
 
     @Override
     public void run() {
 
-        try (OutputStream output = socket.getOutputStream()) {
-            writer = new PrintWriter(output, true);
+        String message;
 
-            String message;
+        System.out.println("Please enter your name: ");
+        message = scanner.nextLine();
+        writer.println(message);
 
-            System.out.println("Please enter your name: ");
+        displaySendingRules();
+
+        do {
+            System.out.println("Please enter your message");
             message = scanner.nextLine();
-            writer.println(message);
 
-            displaySendingRules();
+            if (message.equalsIgnoreCase("userslist")) {
+                for (String user : chatClient.getUsers())
+                    System.out.print(user + " ");
+            } else {
+                writer.println(message);
+            }
 
-            do {
-                System.out.println("Please enter your message");
-                message = scanner.nextLine();
-
-                if (message.equalsIgnoreCase("userslist")) {
-                    for (String user : chatClient.getUsers())
-                        System.out.print(user + " ");
-                } else {
-                    writer.println(message);
-                }
-
-            } while (!message.equalsIgnoreCase("bye"));
-
-
-        } catch (IOException e) {
-            System.out.println("WriteThread exception " + e.getMessage());
-        }
+        } while (!message.equalsIgnoreCase("bye"));
 
     }
 

@@ -3,17 +3,17 @@ package com.emi.serverSide;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.HashSet;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 
 public class ChatServer {
 
     private static final int PORT = 6789;
-    private Set<String> userNames = new HashSet<>();
-    private Set<UserThread> userThreads = new HashSet<>();
+    private Map<String, UserThread> users = new HashMap<>();
 
-    public void execute () {
-        try(ServerSocket serverSocket = new ServerSocket(PORT)) {
+    public void execute() {
+        try (ServerSocket serverSocket = new ServerSocket(PORT)) {
             System.out.println("Chat Server is listening on port " + PORT);
 
             while (true) {
@@ -21,39 +21,47 @@ public class ChatServer {
                 System.out.println("New user connected");
 
                 UserThread newUser = new UserThread(socket, this);
-                userThreads.add(newUser);
                 newUser.start();
             }
 
         } catch (IOException e) {
-            System.out.println("Server error " + e.getMessage());
+            System.out.println("Server exception " + e.getMessage());
         }
     }
 
-    void broadcast(String message, UserThread excludeUser) {
-        for (UserThread aUser : userThreads) {
-            if (aUser != excludeUser)
-                aUser.sendMessage(message);
-        }
-    }
+    boolean addUser(String userName, UserThread userThread) {
+        if (users.containsKey(userName))
+            return false;
 
-    void addUserName(String userName) {
-        userNames.add(userName);
+        users.put(userName, userThread);
+        return true;
     }
 
     void removeUser(String userName, UserThread aUser) {
-        boolean removed = userNames.remove(userName);
-        if (removed) {
-            userThreads.remove(aUser);
-            System.out.println("The user " + userName + " quit");
-        }
-    }
-
-    Set<String> getUserNames() {
-        return this.userNames;
+        users.remove(userName);
+        System.out.println("The user " + userName + " quit");
     }
 
     boolean hasUsers() {
-        return !this.userNames.isEmpty();
+        return users.isEmpty();
+    }
+
+    void broadcastToEveryone(String message, UserThread excludeUser) {
+        for (UserThread user : users.values()) {
+            if (user != excludeUser)
+                user.sendMessage(message);
+        }
+    }
+
+    void broadcastToUser(String message, UserThread user) {
+        user.sendMessage(message);
+    }
+
+    Set<String> getUserNames() {
+        return users.keySet();
+    }
+
+    public UserThread getUserThread(String userName) {
+        return users.get(userName);
     }
 }
