@@ -42,7 +42,7 @@ public class UserThread extends Thread {
                     break;
 
                 if (!clientMessage.contains("@"))
-                    continue;
+                    chatServer.broadcastToUser("The message doesn't follow the sending rules!", this);
 
                 // splits the received message into recipient and message
                 String messageReceiver = clientMessage.substring(1,clientMessage.indexOf(' '));
