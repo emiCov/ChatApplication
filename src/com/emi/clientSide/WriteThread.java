@@ -44,7 +44,7 @@ public class WriteThread extends Thread {
                 for (String user : chatClient.getUsers())
                     System.out.print(user + " ");
             } else {
-                writer.println(message);
+                writer.println("@" + message);
             }
 
         } while (!message.equalsIgnoreCase("bye"));
